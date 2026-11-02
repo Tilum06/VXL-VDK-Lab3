@@ -1,22 +1,30 @@
 #include "traffic_light.h"
 #include "main.h"
 
+static uint32_t blink_tick_ms;
+
 void traffic_light_init(void)
 {
-    /* Ex1: define normal traffic phases and valid initial durations.
-     * Keep RED_LED/YELLOW_LED/GREEN_LED on PA5..PA7 and road 2 on PA8..PA10.
-     * Traffic LED polarity must be checked against the actual schematic.
-     */
+    /* Equal LOW/HIGH phases give 250 ms on/off for either LED polarity. */
+    HAL_GPIO_WritePin(RED_LED_GPIO_Port, RED_LED_Pin, GPIO_PIN_RESET);
+    blink_tick_ms = HAL_GetTick();
 }
 
-void traffic_light_process(uint32_t elapsed_ms)
+void traffic_light_process(void)
 {
-    (void)elapsed_ms;
-    /* Ex4: accumulate elapsed_ms; for each elapsed 250 ms toggle blink phase
-     * and subtract 250 ms, preserving the remainder (do not reset to zero).
-     * Coarse ticks cause edge jitter; they must not cause cumulative drift.
-     * Ex6: blink both roads' selected color in edit mode.
-     * Ex10: add coordinated traffic phases/countdowns and display updates.
-     * This skeleton intentionally contains no running traffic/blink logic.
+    /* HAL tick comes from 1 ms SysTick, independently of TIM2 updates.
+     * Unsigned subtraction also handles the uint32_t tick wraparound.
      */
+    uint32_t elapsed_ms = HAL_GetTick() - blink_tick_ms;
+    uint32_t half_periods = elapsed_ms / TRAFFIC_LIGHT_BLINK_HALF_PERIOD_MS;
+
+    if (half_periods != 0u)
+    {
+        /* Preserve the remainder and phase if foreground service is late. */
+        blink_tick_ms += half_periods * TRAFFIC_LIGHT_BLINK_HALF_PERIOD_MS;
+        if ((half_periods & 1u) != 0u)
+        {
+            HAL_GPIO_TogglePin(RED_LED_GPIO_Port, RED_LED_Pin);
+        }
+    }
 }

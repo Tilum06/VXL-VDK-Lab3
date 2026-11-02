@@ -24,6 +24,7 @@
 /* USER CODE BEGIN Includes */
 #include "board_io.h"
 #include "timer.h"
+#include "traffic_light.h"
 /* USER CODE END Includes */
 
 /* Private typedef -----------------------------------------------------------*/
@@ -92,6 +93,7 @@ int main(void)
   /* USER CODE BEGIN 2 */
   board_io_init();
   timer2_init();
+  traffic_light_init();
   /* USER CODE END 2 */
 
   /* Infinite loop */
@@ -101,6 +103,7 @@ int main(void)
     /* USER CODE END WHILE */
 
     /* USER CODE BEGIN 3 */
+    traffic_light_process();
   }
   /* USER CODE END 3 */
 }

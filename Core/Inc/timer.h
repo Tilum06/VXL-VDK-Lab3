@@ -4,10 +4,10 @@
 #include "main.h"
 
 extern TIM_HandleTypeDef htim2;
-/* Debugger/Proteus watch: advances by approximately 100 each second. */
+/* Debug probe only: 1000/100/10 IRQs per second at 1/10/100 ms. */
 extern volatile uint32_t timer2_irq_count;
 
-/* Ex3 only: internal-clock TIM2, 10 ms update interrupt. */
+/* Call after MX_TIM2_Init: start interrupts without overriding PSC/ARR. */
 void timer2_init(void);
 
 #endif /* INC_TIMER_H_ */

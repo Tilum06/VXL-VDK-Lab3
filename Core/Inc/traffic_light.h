@@ -7,7 +7,7 @@
 #define TRAFFIC_LIGHT_BLINK_HALF_PERIOD_MS 250u
 
 void traffic_light_init(void);
-/* Future foreground service with actual elapsed time, independent of tick size. */
-void traffic_light_process(uint32_t elapsed_ms);
+/* Non-blocking Ex4 service; call continuously in the foreground loop. */
+void traffic_light_process(void);
 
 #endif /* INC_TRAFFIC_LIGHT_H_ */
