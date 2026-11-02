@@ -3,11 +3,6 @@
 
 #include <stdint.h>
 
-/* Optional diagnostic sequence; normal builds run the Ex6 mode logic. */
-#ifndef TRAFFIC_LED_TEST
-#define TRAFFIC_LED_TEST 0
-#endif
-
 #define LED_ON GPIO_PIN_RESET
 #define LED_OFF GPIO_PIN_SET
 
@@ -15,18 +10,17 @@
 #define TRAFFIC_LIGHT_BLINK_HALF_PERIOD_MS 250u
 
 void traffic_light_init(void);
-/* Confirmed red duration in RAM, 1..99 seconds; reset restores 5 seconds.
- * The normal traffic/countdown FSM is not implemented yet.
+/* RAM defaults red/yellow/green = 5/2/3 seconds. Setters return 1 on success,
+ * 0 without changes if outside 1..99 or red < green + yellow.
+ * Normal traffic snapshots the saved values on mode entry.
  */
 uint8_t traffic_light_get_red_duration_s(void);
-void traffic_light_set_red_duration_s(uint8_t duration_s);
-/* Confirmed yellow duration in RAM, 1..99 seconds; reset restores 2 seconds. */
+uint8_t traffic_light_set_red_duration_s(uint8_t duration_s);
 uint8_t traffic_light_get_yellow_duration_s(void);
-void traffic_light_set_yellow_duration_s(uint8_t duration_s);
-/* Confirmed green duration in RAM, 1..99 seconds; reset restores 3 seconds. */
+uint8_t traffic_light_set_yellow_duration_s(uint8_t duration_s);
 uint8_t traffic_light_get_green_duration_s(void);
-void traffic_light_set_green_duration_s(uint8_t duration_s);
-/* Active-LOW Ex6 mode blink using Ex4's HAL tick; call in foreground. */
+uint8_t traffic_light_set_green_duration_s(uint8_t duration_s);
+/* Foreground: normal traffic/countdown or selected-color 2 Hz blink. */
 void traffic_light_process(void);
 
 #endif /* INC_TRAFFIC_LIGHT_H_ */

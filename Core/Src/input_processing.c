@@ -2,6 +2,7 @@
 #include "input_reading.h"
 #include "output_display.h"
 #include "traffic_light.h"
+#include "main.h"
 
 typedef enum {
     MODE_WAIT_PRESS,
@@ -13,6 +14,8 @@ static ModeButtonState mode_button_state;
 static uint8_t edit_duration_s;
 static uint8_t previous_set_pressed;
 static uint8_t previous_save_pressed;
+static uint8_t save_rejected;
+static uint32_t save_error_tick_ms;
 
 static uint8_t get_selected_duration_s(void)
 {
@@ -34,11 +37,10 @@ static void update_mode_display(void)
     case INPUT_MODE_RED:
     case INPUT_MODE_YELLOW:
     case INPUT_MODE_GREEN:
-        output_display_set_pairs((uint8_t)input_mode, edit_duration_s);
+        output_display_set_pairs((uint8_t)input_mode, save_rejected ? 0u : edit_duration_s);
         break;
     default:
-        /* No traffic countdown exists yet in normal mode. */
-        output_display_blank();
+        /* traffic_light_process owns the normal-mode countdown display. */
         break;
     }
 }
@@ -50,6 +52,7 @@ void input_processing_init(void)
     edit_duration_s = get_selected_duration_s();
     previous_set_pressed = 0u;
     previous_save_pressed = 0u;
+    save_rejected = 0u;
     update_mode_display();
 }
 
@@ -95,6 +98,7 @@ void fsm_for_input_processing(void)
          * Mode changes take priority over simultaneous SET/SAVE edges.
          */
         edit_duration_s = get_selected_duration_s();
+        save_rejected = 0u;
         update_mode_display();
         return;
     }
@@ -104,26 +108,33 @@ void fsm_for_input_processing(void)
     {
         if (set_edge)
         {
+            save_rejected = 0u;
             edit_duration_s = (edit_duration_s >= INPUT_DURATION_MAX_S) ?
                               INPUT_DURATION_MIN_S : edit_duration_s + 1u;
         }
         if (save_edge)
         {
+            uint8_t accepted;
             /* If SET and SAVE arrive together, save the incremented value. */
             if (input_mode == INPUT_MODE_RED)
             {
-                traffic_light_set_red_duration_s(edit_duration_s);
+                accepted = traffic_light_set_red_duration_s(edit_duration_s);
             }
             else if (input_mode == INPUT_MODE_YELLOW)
             {
-                traffic_light_set_yellow_duration_s(edit_duration_s);
+                accepted = traffic_light_set_yellow_duration_s(edit_duration_s);
             }
             else
             {
-                traffic_light_set_green_duration_s(edit_duration_s);
+                accepted = traffic_light_set_green_duration_s(edit_duration_s);
             }
+            save_rejected = !accepted;
+            save_error_tick_ms = HAL_GetTick();
         }
-        if (set_edge || save_edge)
+        uint8_t error_expired = save_rejected &&
+            ((uint32_t)(HAL_GetTick() - save_error_tick_ms) >= 1000u);
+        if (error_expired) save_rejected = 0u;
+        if (set_edge || save_edge || error_expired)
         {
             update_mode_display();
         }
