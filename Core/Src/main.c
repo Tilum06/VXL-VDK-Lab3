@@ -27,6 +27,7 @@
 #include "traffic_light.h"
 #include "input_reading.h"
 #include "input_processing.h"
+#include "output_display.h"
 /* USER CODE END Includes */
 
 /* Private typedef -----------------------------------------------------------*/
@@ -95,6 +96,7 @@ int main(void)
   /* USER CODE BEGIN 2 */
   board_io_init();
   input_reading_init();
+  output_display_init();
   input_processing_init();
   timer2_init();
   traffic_light_init();
@@ -107,8 +109,9 @@ int main(void)
     /* USER CODE END WHILE */
 
     /* USER CODE BEGIN 3 */
-    traffic_light_process();
     fsm_for_input_processing();
+    traffic_light_process();
+    output_display_scan();
   }
   /* USER CODE END 3 */
 }
