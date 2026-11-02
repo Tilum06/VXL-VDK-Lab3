@@ -20,6 +20,9 @@ void traffic_light_init(void);
  */
 uint8_t traffic_light_get_red_duration_s(void);
 void traffic_light_set_red_duration_s(uint8_t duration_s);
+/* Confirmed yellow duration in RAM, 1..99 seconds; reset restores 2 seconds. */
+uint8_t traffic_light_get_yellow_duration_s(void);
+void traffic_light_set_yellow_duration_s(uint8_t duration_s);
 /* Active-LOW Ex6 mode blink using Ex4's HAL tick; call in foreground. */
 void traffic_light_process(void);
 
