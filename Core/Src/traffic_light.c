@@ -8,6 +8,7 @@
 static uint32_t blink_tick_ms;
 static uint8_t red_duration_s = 5u;
 static uint8_t yellow_duration_s = 2u;
+static uint8_t green_duration_s = 3u;
 
 uint8_t traffic_light_get_red_duration_s(void)
 {
@@ -34,6 +35,20 @@ void traffic_light_set_yellow_duration_s(uint8_t duration_s)
         (duration_s <= INPUT_DURATION_MAX_S))
     {
         yellow_duration_s = duration_s;
+    }
+}
+
+uint8_t traffic_light_get_green_duration_s(void)
+{
+    return green_duration_s;
+}
+
+void traffic_light_set_green_duration_s(uint8_t duration_s)
+{
+    if ((duration_s >= INPUT_DURATION_MIN_S) &&
+        (duration_s <= INPUT_DURATION_MAX_S))
+    {
+        green_duration_s = duration_s;
     }
 }
 

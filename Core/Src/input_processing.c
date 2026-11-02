@@ -3,9 +3,6 @@
 #include "output_display.h"
 #include "traffic_light.h"
 
-/* Green editing remains outside Ex8. */
-#define INITIAL_GREEN_DURATION_S 3u
-
 typedef enum {
     MODE_WAIT_PRESS,
     MODE_WAIT_RELEASE
@@ -19,8 +16,15 @@ static uint8_t previous_save_pressed;
 
 static uint8_t get_selected_duration_s(void)
 {
-    return (input_mode == INPUT_MODE_YELLOW) ?
-           traffic_light_get_yellow_duration_s() : traffic_light_get_red_duration_s();
+    switch (input_mode)
+    {
+    case INPUT_MODE_YELLOW:
+        return traffic_light_get_yellow_duration_s();
+    case INPUT_MODE_GREEN:
+        return traffic_light_get_green_duration_s();
+    default:
+        return traffic_light_get_red_duration_s();
+    }
 }
 
 static void update_mode_display(void)
@@ -29,10 +33,8 @@ static void update_mode_display(void)
     {
     case INPUT_MODE_RED:
     case INPUT_MODE_YELLOW:
-        output_display_set_pairs((uint8_t)input_mode, edit_duration_s);
-        break;
     case INPUT_MODE_GREEN:
-        output_display_set_pairs(INPUT_MODE_GREEN, INITIAL_GREEN_DURATION_S);
+        output_display_set_pairs((uint8_t)input_mode, edit_duration_s);
         break;
     default:
         /* No traffic countdown exists yet in normal mode. */
@@ -97,7 +99,8 @@ void fsm_for_input_processing(void)
         return;
     }
 
-    if ((input_mode == INPUT_MODE_RED) || (input_mode == INPUT_MODE_YELLOW))
+    if ((input_mode == INPUT_MODE_RED) || (input_mode == INPUT_MODE_YELLOW) ||
+        (input_mode == INPUT_MODE_GREEN))
     {
         if (set_edge)
         {
@@ -111,9 +114,13 @@ void fsm_for_input_processing(void)
             {
                 traffic_light_set_red_duration_s(edit_duration_s);
             }
-            else
+            else if (input_mode == INPUT_MODE_YELLOW)
             {
                 traffic_light_set_yellow_duration_s(edit_duration_s);
+            }
+            else
+            {
+                traffic_light_set_green_duration_s(edit_duration_s);
             }
         }
         if (set_edge || save_edge)
