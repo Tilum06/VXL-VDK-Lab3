@@ -24,10 +24,6 @@
 /* USER CODE BEGIN Includes */
 #include "board_io.h"
 #include "timer.h"
-#include "traffic_light.h"
-#include "input_reading.h"
-#include "input_processing.h"
-#include "output_display.h"
 /* USER CODE END Includes */
 
 /* Private typedef -----------------------------------------------------------*/
@@ -95,11 +91,7 @@ int main(void)
   MX_TIM2_Init();
   /* USER CODE BEGIN 2 */
   board_io_init();
-  input_reading_init();
-  output_display_init();
-  input_processing_init();
   timer2_init();
-  traffic_light_init();
   /* USER CODE END 2 */
 
   /* Infinite loop */
@@ -109,9 +101,6 @@ int main(void)
     /* USER CODE END WHILE */
 
     /* USER CODE BEGIN 3 */
-    fsm_for_input_processing();
-    traffic_light_process();
-    output_display_scan();
   }
   /* USER CODE END 3 */
 }
@@ -211,7 +200,7 @@ static void MX_GPIO_Init(void)
 
   /*Configure GPIO pin Output Level */
   HAL_GPIO_WritePin(GPIOA, RED_LED_Pin|YELLOW_LED_Pin|GREEN_LED_Pin|RED_LED2_Pin
-                          |YELLOW_LED2_Pin|GREEN_LED2_Pin, LED_OFF);
+                          |YELLOW_LED2_Pin|GREEN_LED2_Pin, GPIO_PIN_RESET);
 
   /*Configure GPIO pin Output Level */
   HAL_GPIO_WritePin(GPIOB, SEG_A_Pin|SEG_B_Pin|SEG_C_Pin|EN3_Pin

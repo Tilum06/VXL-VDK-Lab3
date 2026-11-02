@@ -58,6 +58,7 @@ void PendSV_Handler(void);
 void SysTick_Handler(void);
 void TIM2_IRQHandler(void);
 /* USER CODE BEGIN EFP */
+void TIM2_IRQHandler(void);
 /* USER CODE END EFP */
 
 #ifdef __cplusplus
