@@ -14,7 +14,9 @@ typedef enum {
 #define INPUT_DURATION_MAX_S 99u
 
 void input_processing_init(void);
-/* Future super-loop entry; never run the application FSM in the TIM2 ISR. */
+/* Foreground-owned mode, visible in debugger Watch/Live Expressions. */
+extern volatile InputMode input_mode;
+/* Super-loop entry: one mode change per debounced press/release cycle. */
 void fsm_for_input_processing(void);
 
 #endif /* INC_INPUT_PROCESSING_H_ */

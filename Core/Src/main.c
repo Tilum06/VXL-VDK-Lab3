@@ -25,6 +25,8 @@
 #include "board_io.h"
 #include "timer.h"
 #include "traffic_light.h"
+#include "input_reading.h"
+#include "input_processing.h"
 /* USER CODE END Includes */
 
 /* Private typedef -----------------------------------------------------------*/
@@ -92,6 +94,8 @@ int main(void)
   MX_TIM2_Init();
   /* USER CODE BEGIN 2 */
   board_io_init();
+  input_reading_init();
+  input_processing_init();
   timer2_init();
   traffic_light_init();
   /* USER CODE END 2 */
@@ -104,6 +108,7 @@ int main(void)
 
     /* USER CODE BEGIN 3 */
     traffic_light_process();
+    fsm_for_input_processing();
   }
   /* USER CODE END 3 */
 }

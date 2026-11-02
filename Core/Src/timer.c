@@ -1,4 +1,5 @@
 #include "timer.h"
+#include "input_reading.h"
 
 volatile uint32_t timer2_irq_count;
 
@@ -22,7 +23,7 @@ void HAL_TIM_PeriodElapsedCallback(TIM_HandleTypeDef *htim)
 {
     if (htim->Instance == TIM2)
     {
-        /* Minimal Ex3 probe; no button sampling or application logic yet. */
         timer2_irq_count++;
+        button_reading();
     }
 }
