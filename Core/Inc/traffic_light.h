@@ -15,6 +15,11 @@
 #define TRAFFIC_LIGHT_BLINK_HALF_PERIOD_MS 250u
 
 void traffic_light_init(void);
+/* Confirmed red duration in RAM, 1..99 seconds; reset restores 5 seconds.
+ * The normal traffic/countdown FSM is not implemented yet.
+ */
+uint8_t traffic_light_get_red_duration_s(void);
+void traffic_light_set_red_duration_s(uint8_t duration_s);
 /* Active-LOW Ex6 mode blink using Ex4's HAL tick; call in foreground. */
 void traffic_light_process(void);
 

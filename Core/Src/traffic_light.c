@@ -6,6 +6,21 @@
                           RED_LED2_Pin | YELLOW_LED2_Pin | GREEN_LED2_Pin)
 
 static uint32_t blink_tick_ms;
+static uint8_t red_duration_s = 5u;
+
+uint8_t traffic_light_get_red_duration_s(void)
+{
+    return red_duration_s;
+}
+
+void traffic_light_set_red_duration_s(uint8_t duration_s)
+{
+    if ((duration_s >= INPUT_DURATION_MIN_S) &&
+        (duration_s <= INPUT_DURATION_MAX_S))
+    {
+        red_duration_s = duration_s;
+    }
+}
 
 static void set_traffic_leds(uint16_t on_pins)
 {
