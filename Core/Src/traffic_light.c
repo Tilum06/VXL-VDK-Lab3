@@ -5,14 +5,33 @@
 #define ALL_TRAFFIC_PINS (RED_LED_Pin | YELLOW_LED_Pin | GREEN_LED_Pin | \
                           RED_LED2_Pin | YELLOW_LED2_Pin | GREEN_LED2_Pin)
 
+static uint32_t blink_tick_ms;
+
+static void set_traffic_leds(uint16_t on_pins)
+{
+    HAL_GPIO_WritePin(GPIOA, ALL_TRAFFIC_PINS, LED_OFF);
+    if (on_pins != 0u)
+    {
+        HAL_GPIO_WritePin(GPIOA, on_pins, LED_ON);
+    }
+}
+
+#if TRAFFIC_LED_TEST
+static uint8_t test_phase;
+static const uint16_t test_pins[4] = {
+    RED_LED_Pin | RED_LED2_Pin,
+    YELLOW_LED_Pin | YELLOW_LED2_Pin,
+    GREEN_LED_Pin | GREEN_LED2_Pin,
+    0u
+};
+#define TRAFFIC_LED_TEST_STEP_MS 2000u
+#else
 static InputMode blink_mode;
 static uint16_t blink_pins;
-static uint32_t blink_tick_ms;
 
 static void select_blink_mode(InputMode mode, uint32_t now_ms)
 {
     /* User-confirmed wiring: anode to +3.3 V, cathode to GPIO. */
-    HAL_GPIO_WritePin(GPIOA, ALL_TRAFFIC_PINS, GPIO_PIN_SET);
     blink_mode = mode;
     blink_tick_ms = now_ms;
 
@@ -35,16 +54,22 @@ static void select_blink_mode(InputMode mode, uint32_t now_ms)
         blink_pins = 0u;
         break;
     }
-    if (blink_pins != 0u)
-    {
-        /* Start each selected mode with a complete 250 ms ON phase. */
-        HAL_GPIO_WritePin(GPIOA, blink_pins, GPIO_PIN_RESET);
-    }
+    /* Start each selected mode with a complete 250 ms ON phase. */
+    set_traffic_leds(blink_pins);
 }
+#endif
 
 void traffic_light_init(void)
 {
-    select_blink_mode(INPUT_MODE_NORMAL, HAL_GetTick());
+    set_traffic_leds(0u);
+    blink_tick_ms = HAL_GetTick();
+#if TRAFFIC_LED_TEST
+    /* First foreground call starts red; init leaves all six pins HIGH. */
+    test_phase = 4u;
+#else
+    blink_mode = (InputMode)0;
+    blink_pins = 0u;
+#endif
 }
 
 void traffic_light_process(void)
@@ -53,6 +78,24 @@ void traffic_light_process(void)
      * Unsigned subtraction also handles the uint32_t tick wraparound.
      */
     uint32_t now_ms = HAL_GetTick();
+#if TRAFFIC_LED_TEST
+    /* This branch never reads the FSM mode or runs the Ex4 blink logic. */
+    if (test_phase >= 4u)
+    {
+        test_phase = 0u;
+        blink_tick_ms = now_ms;
+        set_traffic_leds(test_pins[test_phase]);
+        return;
+    }
+    uint32_t steps = (uint32_t)(now_ms - blink_tick_ms) /
+                     TRAFFIC_LED_TEST_STEP_MS;
+    if (steps != 0u)
+    {
+        blink_tick_ms += steps * TRAFFIC_LED_TEST_STEP_MS;
+        test_phase = (test_phase + steps) % 4u;
+        set_traffic_leds(test_pins[test_phase]);
+    }
+#else
     InputMode mode = input_mode;
     if (mode != blink_mode)
     {
@@ -71,4 +114,5 @@ void traffic_light_process(void)
             HAL_GPIO_TogglePin(GPIOA, blink_pins);
         }
     }
+#endif
 }

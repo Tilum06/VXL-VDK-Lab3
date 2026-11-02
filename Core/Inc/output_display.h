@@ -4,7 +4,7 @@
 #include <stdint.h>
 
 #define OUTPUT_DISPLAY_DIGIT_COUNT 4u
-#define OUTPUT_DISPLAY_SCAN_PERIOD_MS 1u
+#define OUTPUT_DISPLAY_SCAN_PERIOD_MS 2u
 
 /* Call after GPIO init. All functions run in the foreground only. */
 void output_display_init(void);
@@ -12,7 +12,7 @@ void output_display_init(void);
 void output_display_set_pairs(uint8_t first, uint8_t second);
 /* Blank at the next frame boundary; invalid pair values also blank. */
 void output_display_blank(void);
-/* Call continuously: SysTick gates 1 ms/digit, 4 ms/frame (250 Hz). */
+/* Call continuously: SysTick gates 2 ms/digit, 8 ms/frame (125 Hz). */
 void output_display_scan(void);
 
 #endif /* INC_OUTPUT_DISPLAY_H_ */

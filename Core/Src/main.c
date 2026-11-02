@@ -211,7 +211,7 @@ static void MX_GPIO_Init(void)
 
   /*Configure GPIO pin Output Level */
   HAL_GPIO_WritePin(GPIOA, RED_LED_Pin|YELLOW_LED_Pin|GREEN_LED_Pin|RED_LED2_Pin
-                          |YELLOW_LED2_Pin|GREEN_LED2_Pin, GPIO_PIN_RESET);
+                          |YELLOW_LED2_Pin|GREEN_LED2_Pin, LED_OFF);
 
   /*Configure GPIO pin Output Level */
   HAL_GPIO_WritePin(GPIOB, SEG_A_Pin|SEG_B_Pin|SEG_C_Pin|EN3_Pin
