@@ -1,0 +1,57 @@
+# STM32CubeIDE / Eclipse build output (any project level)
+Debug/
+Release/
+build/
+.build*/
+.settings/
+.metadata/
+*.o
+*.obj
+*.d
+*.su
+*.elf
+*.axf
+*.hex
+*.bin
+*.map
+*.list
+*.lst
+*.a
+*.gcda
+*.gcno
+compile_commands.json
+
+# Proteus: retain .pdsprj, .dsn, .lyt, libraries and design documents
+*.pdsbak
+*.workspace
+*.DBK
+*.dbk
+*.PWI
+*.pwi
+*.SDF
+*.sdf
+
+# Logs, backup files, cache and temporary files
+*.log
+*.bak
+*.backup
+*.old
+*.orig
+*.rej
+*.tmp
+*.temp
+*.swp
+*.swo
+*~
+.cache/
+__pycache__/
+*.pyc
+.pytest_cache/
+
+# OS metadata
+Thumbs.db
+Desktop.ini
+.DS_Store
+
+# Keep source, .ioc, .project, .cproject, .mxproject, startup/linker files,
+# Drivers, Proteus design files, documents and reports under version control.
