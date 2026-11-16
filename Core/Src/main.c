@@ -24,8 +24,9 @@
 /* USER CODE BEGIN Includes */
 #include "board_io.h"
 #include "timer.h"
+#include "software_timer.h"
 #include "traffic_light.h"
-#include "input_reading.h"
+#include "button.h"
 #include "input_processing.h"
 #include "output_display.h"
 /* USER CODE END Includes */
@@ -95,8 +96,9 @@ int main(void)
   MX_TIM2_Init();
   /* USER CODE BEGIN 2 */
   board_io_init();
-  input_reading_init();
+  button_init();
   output_display_init();
+  software_timer_init();
   input_processing_init();
   timer2_init();
   traffic_light_init();
@@ -110,7 +112,6 @@ int main(void)
 
     /* USER CODE BEGIN 3 */
     fsm_for_input_processing();
-    traffic_light_process();
     output_display_scan();
   }
   /* USER CODE END 3 */

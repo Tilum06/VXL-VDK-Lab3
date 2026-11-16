@@ -1,5 +1,5 @@
 #include "timer.h"
-#include "input_reading.h"
+#include "button.h"
 
 volatile uint32_t timer2_irq_count;
 

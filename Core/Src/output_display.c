@@ -23,6 +23,7 @@ static uint32_t pending_frame;
 static uint32_t active_frame;
 static uint32_t scan_tick_ms;
 static uint8_t next_digit;
+static uint8_t display_enabled;
 
 void output_display_init(void)
 {
@@ -31,6 +32,7 @@ void output_display_init(void)
     pending_frame = BLANK_FRAME;
     active_frame = BLANK_FRAME;
     next_digit = 0u;
+    display_enabled = 1u;
     scan_tick_ms = HAL_GetTick();
 }
 
@@ -52,8 +54,29 @@ void output_display_blank(void)
     pending_frame = BLANK_FRAME;
 }
 
+void output_display_set_enabled(uint8_t enabled)
+{
+    enabled = enabled != 0u;
+    if (display_enabled == enabled) return;
+    display_enabled = enabled;
+    next_digit = 0u;
+    if (!enabled)
+    {
+        /* Disable PNP digit enables before changing active-LOW segments. */
+        HAL_GPIO_WritePin(GPIOB, ALL_ENABLE_PINS, GPIO_PIN_SET);
+        HAL_GPIO_WritePin(GPIOB, ALL_SEGMENT_PINS, GPIO_PIN_SET);
+        pending_frame = active_frame = BLANK_FRAME;
+        return;
+    }
+    /* The next scan latches the fresh countdown and lights digit 0 immediately.
+     * Subsequent slots retain the existing 2 ms/digit timing.
+     */
+    scan_tick_ms = HAL_GetTick() - OUTPUT_DISPLAY_SCAN_PERIOD_MS;
+}
+
 void output_display_scan(void)
 {
+    if (!display_enabled) return;
     uint32_t now_ms = HAL_GetTick();
     if ((uint32_t)(now_ms - scan_tick_ms) < OUTPUT_DISPLAY_SCAN_PERIOD_MS)
     {

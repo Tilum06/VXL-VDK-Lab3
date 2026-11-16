@@ -5,7 +5,8 @@ param(
 $ErrorActionPreference = 'Stop'
 $coreRoot = Split-Path -Parent $PSScriptRoot
 $projectRoot = Split-Path -Parent $coreRoot
-$buildRoot = Join-Path $coreRoot '.build-ex3'
+# Keep build artifacts outside Core: CubeIDE treats Core recursively as source.
+$buildRoot = Join-Path $projectRoot '.build-ex3'
 
 if ($ToolchainBin) {
     $gcc = Join-Path $ToolchainBin 'arm-none-eabi-gcc.exe'

@@ -7,7 +7,8 @@ typedef enum {
     INPUT_MODE_NORMAL = 1,
     INPUT_MODE_RED,
     INPUT_MODE_YELLOW,
-    INPUT_MODE_GREEN
+    INPUT_MODE_GREEN,
+    INPUT_MODE_MANUAL
 } InputMode;
 
 #define INPUT_DURATION_MIN_S 1u
@@ -16,7 +17,7 @@ typedef enum {
 void input_processing_init(void);
 /* Foreground-owned mode, visible in debugger Watch/Live Expressions. */
 extern volatile InputMode input_mode;
-/* Super-loop entry: one mode change per debounced press/release cycle. */
+/* Mode controller and exclusive dispatch to Automatic/Setting/Manual. */
 void fsm_for_input_processing(void);
 
 #endif /* INC_INPUT_PROCESSING_H_ */

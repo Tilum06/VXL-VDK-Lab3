@@ -20,7 +20,15 @@ uint8_t traffic_light_get_yellow_duration_s(void);
 uint8_t traffic_light_set_yellow_duration_s(uint8_t duration_s);
 uint8_t traffic_light_get_green_duration_s(void);
 uint8_t traffic_light_set_green_duration_s(uint8_t duration_s);
-/* Foreground: normal traffic/countdown or selected-color 2 Hz blink. */
-void traffic_light_process(void);
+/* Foreground output interface; pin mapping and active-LOW polarity stay here. */
+typedef enum {
+    TRAFFIC_COLOR_RED,
+    TRAFFIC_COLOR_YELLOW,
+    TRAFFIC_COLOR_GREEN
+} TrafficColor;
+
+void traffic_light_set_roads(TrafficColor road1, TrafficColor road2);
+void traffic_light_set_blink_color(TrafficColor color);
+void traffic_light_toggle_color(TrafficColor color);
 
 #endif /* INC_TRAFFIC_LIGHT_H_ */

@@ -12,6 +12,10 @@ void output_display_init(void);
 void output_display_set_pairs(uint8_t first, uint8_t second);
 /* Blank at the next frame boundary; invalid pair values also blank. */
 void output_display_blank(void);
+/* Disable immediately: all EN/SEG HIGH, discard the previous frame, stop scan.
+ * Re-enable starts at digit 0; set the new content before the next scan call.
+ */
+void output_display_set_enabled(uint8_t enabled);
 /* Call continuously: SysTick gates 2 ms/digit, 8 ms/frame (125 Hz). */
 void output_display_scan(void);
 

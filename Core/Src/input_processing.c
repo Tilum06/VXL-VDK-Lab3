@@ -1,142 +1,105 @@
 #include "input_processing.h"
-#include "input_reading.h"
+#include "button.h"
+#include "fsm_automatic.h"
+#include "fsm_setting.h"
+#include "fsm_manual.h"
+#include "software_timer.h"
 #include "output_display.h"
-#include "traffic_light.h"
-#include "main.h"
-
-typedef enum {
-    MODE_WAIT_PRESS,
-    MODE_WAIT_RELEASE
-} ModeButtonState;
 
 volatile InputMode input_mode = INPUT_MODE_NORMAL;
-static ModeButtonState mode_button_state;
-static uint8_t edit_duration_s;
-static uint8_t previous_set_pressed;
-static uint8_t previous_save_pressed;
-static uint8_t save_rejected;
-static uint32_t save_error_tick_ms;
-
-static uint8_t get_selected_duration_s(void)
-{
-    switch (input_mode)
-    {
-    case INPUT_MODE_YELLOW:
-        return traffic_light_get_yellow_duration_s();
-    case INPUT_MODE_GREEN:
-        return traffic_light_get_green_duration_s();
-    default:
-        return traffic_light_get_red_duration_s();
-    }
-}
-
-static void update_mode_display(void)
-{
-    switch (input_mode)
-    {
-    case INPUT_MODE_RED:
-    case INPUT_MODE_YELLOW:
-    case INPUT_MODE_GREEN:
-        output_display_set_pairs((uint8_t)input_mode, save_rejected ? 0u : edit_duration_s);
-        break;
-    default:
-        /* traffic_light_process owns the normal-mode countdown display. */
-        break;
-    }
-}
+static InputMode active_mode;
 
 void input_processing_init(void)
 {
     input_mode = INPUT_MODE_NORMAL;
-    mode_button_state = MODE_WAIT_PRESS;
-    edit_duration_s = get_selected_duration_s();
-    previous_set_pressed = 0u;
-    previous_save_pressed = 0u;
-    save_rejected = 0u;
-    update_mode_display();
+    active_mode = (InputMode)0;
 }
 
 void fsm_for_input_processing(void)
 {
-    uint8_t pressed = is_button_pressed(INPUT_BUTTON_MODE);
-    uint8_t set_pressed = is_button_pressed(INPUT_BUTTON_SET);
-    uint8_t save_pressed = is_button_pressed(INPUT_BUTTON_SAVE);
-    uint8_t set_edge = set_pressed && !previous_set_pressed;
-    uint8_t save_edge = save_pressed && !previous_save_pressed;
-    InputMode previous_mode = input_mode;
-
-    /* Track edges in every mode: holding a button while entering
-     * edit mode must not create a new press or repeat action.
+    timerRun();
+    /* One atomic snapshot consumes even ignored events. FSMs receive values,
+     * never read/clear the shared button flags themselves.
      */
-    previous_set_pressed = set_pressed;
-    previous_save_pressed = save_pressed;
+    ButtonEvents events = button_take_events();
+    uint8_t mode_edge = (events & BUTTON_EVENT_MODE) != 0u;
+    uint8_t set_edge = (events & BUTTON_EVENT_SET) != 0u;
+    uint8_t save_edge = (events & BUTTON_EVENT_SAVE) != 0u;
 
-    switch (mode_button_state)
+    /* MODE wins. At the exact timeout boundary, timeout wins over SET.
+     * Guard independent ifs to allow at most one mode transition per call.
+     */
+    switch (input_mode)
     {
-    case MODE_WAIT_PRESS:
-        if (pressed != 0u)
-        {
-            input_mode = (input_mode == INPUT_MODE_GREEN) ? INPUT_MODE_NORMAL :
-                         (InputMode)(input_mode + 1);
-            mode_button_state = MODE_WAIT_RELEASE;
-        }
+    case INPUT_MODE_NORMAL:
+        if (mode_edge) input_mode = INPUT_MODE_RED;
+        if (!mode_edge && save_edge) input_mode = INPUT_MODE_MANUAL;
         break;
-    case MODE_WAIT_RELEASE:
-        if (pressed == 0u)
-        {
-            mode_button_state = MODE_WAIT_PRESS;
-        }
+    case INPUT_MODE_RED:
+        if (mode_edge) input_mode = INPUT_MODE_YELLOW;
+        break;
+    case INPUT_MODE_YELLOW:
+        if (mode_edge) input_mode = INPUT_MODE_GREEN;
+        break;
+    case INPUT_MODE_GREEN:
+        if (mode_edge) input_mode = INPUT_MODE_NORMAL;
+        break;
+    case INPUT_MODE_MANUAL:
+        if (mode_edge) input_mode = INPUT_MODE_NORMAL;
+        if (!mode_edge && fsm_manual_timed_out()) input_mode = INPUT_MODE_NORMAL;
         break;
     default:
-        mode_button_state = MODE_WAIT_PRESS;
+        input_mode = INPUT_MODE_NORMAL;
         break;
     }
 
-    if (input_mode != previous_mode)
+    if (input_mode != active_mode)
     {
-        /* Enter from the confirmed value; leaving discards unsaved edits.
-         * Mode changes take priority over simultaneous SET/SAVE edges.
-         */
-        edit_duration_s = get_selected_duration_s();
-        save_rejected = 0u;
-        update_mode_display();
-        return;
+        InputMode previous_mode = active_mode;
+        TrafficHandoff handoff = {ROAD1_GREEN, 0u};
+        /* Capture all-red age before disabling the departing mode's timers. */
+        if (previous_mode == INPUT_MODE_NORMAL) handoff = fsm_automatic_handoff();
+        if (previous_mode == INPUT_MODE_MANUAL) handoff = fsm_manual_handoff();
+        stopAllTimers();
+        active_mode = input_mode;
+        /* Mode changes discard simultaneous SET/SAVE and unsaved edits. */
+        set_edge = save_edge = 0u;
+        switch (active_mode)
+        {
+        case INPUT_MODE_NORMAL:
+            if (previous_mode == INPUT_MODE_MANUAL)
+                fsm_automatic_resume(handoff);
+            if (previous_mode != INPUT_MODE_MANUAL) fsm_automatic_enter();
+            break;
+        case INPUT_MODE_RED:
+        case INPUT_MODE_YELLOW:
+        case INPUT_MODE_GREEN:
+            fsm_setting_enter(active_mode);
+            break;
+        case INPUT_MODE_MANUAL:
+            fsm_manual_enter(handoff);
+            break;
+        default:
+            break;
+        }
+        output_display_set_enabled(active_mode != INPUT_MODE_MANUAL);
     }
 
-    if ((input_mode == INPUT_MODE_RED) || (input_mode == INPUT_MODE_YELLOW) ||
-        (input_mode == INPUT_MODE_GREEN))
+    /* Exclusive ownership: inactive FSMs cannot write LEDs or the display. */
+    switch (active_mode)
     {
-        if (set_edge)
-        {
-            save_rejected = 0u;
-            edit_duration_s = (edit_duration_s >= INPUT_DURATION_MAX_S) ?
-                              INPUT_DURATION_MIN_S : edit_duration_s + 1u;
-        }
-        if (save_edge)
-        {
-            uint8_t accepted;
-            /* If SET and SAVE arrive together, save the incremented value. */
-            if (input_mode == INPUT_MODE_RED)
-            {
-                accepted = traffic_light_set_red_duration_s(edit_duration_s);
-            }
-            else if (input_mode == INPUT_MODE_YELLOW)
-            {
-                accepted = traffic_light_set_yellow_duration_s(edit_duration_s);
-            }
-            else
-            {
-                accepted = traffic_light_set_green_duration_s(edit_duration_s);
-            }
-            save_rejected = !accepted;
-            save_error_tick_ms = HAL_GetTick();
-        }
-        uint8_t error_expired = save_rejected &&
-            ((uint32_t)(HAL_GetTick() - save_error_tick_ms) >= 1000u);
-        if (error_expired) save_rejected = 0u;
-        if (set_edge || save_edge || error_expired)
-        {
-            update_mode_display();
-        }
+    case INPUT_MODE_NORMAL:
+        fsm_automatic_run();
+        break;
+    case INPUT_MODE_RED:
+    case INPUT_MODE_YELLOW:
+    case INPUT_MODE_GREEN:
+        fsm_setting_run(set_edge, save_edge);
+        break;
+    case INPUT_MODE_MANUAL:
+        fsm_manual_run(set_edge);
+        break;
+    default:
+        break;
     }
 }
