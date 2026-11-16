@@ -5,18 +5,22 @@
 #include "fsm_manual.h"
 #include "software_timer.h"
 #include "output_display.h"
+#include "main.h"
 
 static InputMode active_mode;
+static uint8_t pending_set, pending_save;
+static uint32_t button_sample_ms;
 
 void input_processing_init(void)
 {
     input_mode = INPUT_MODE_NORMAL;
     active_mode = (InputMode)0;
+    pending_set = pending_save = 0u;
+    button_sample_ms = HAL_GetTick();
 }
 
 void fsm_for_input_processing(void)
 {
-    timerRun();
     /* One atomic snapshot consumes even ignored events. FSMs receive values,
      * never read/clear the shared button flags themselves.
      */
@@ -84,21 +88,53 @@ void fsm_for_input_processing(void)
         output_display_set_enabled(active_mode != INPUT_MODE_MANUAL);
     }
 
-    /* Exclusive ownership: inactive FSMs cannot write LEDs or the display. */
-    switch (active_mode)
+    pending_set = set_edge;
+    pending_save = save_edge;
+}
+
+void Task_Button(void)
+{
+    uint32_t now = HAL_GetTick();
+    /* Backlog is not historical GPIO data: never fabricate debounce samples
+     * by reading the same level several times in a fast catch-up loop.
+     */
+    if ((uint32_t)(now - button_sample_ms) < 10u) return;
+    button_sample_ms = now;
+    button_reading();
+}
+
+void Task_SoftwareTimer(void)
+{
+    timerRun();
+}
+
+void Task_ModeController(void)
+{
+    fsm_for_input_processing();
+}
+
+void Task_Automatic(void)
+{
+    if (active_mode == INPUT_MODE_NORMAL) fsm_automatic_run();
+}
+
+void Task_Manual(void)
+{
+    if (active_mode == INPUT_MODE_MANUAL)
     {
-    case INPUT_MODE_NORMAL:
-        fsm_automatic_run();
-        break;
-    case INPUT_MODE_RED:
-    case INPUT_MODE_YELLOW:
-    case INPUT_MODE_GREEN:
-        fsm_setting_run(set_edge, save_edge);
-        break;
-    case INPUT_MODE_MANUAL:
+        uint8_t set_edge = pending_set;
+        pending_set = 0u;
         fsm_manual_run(set_edge);
-        break;
-    default:
-        break;
+    }
+}
+
+void Task_Setting(void)
+{
+    if (active_mode >= INPUT_MODE_RED && active_mode <= INPUT_MODE_GREEN)
+    {
+        uint8_t set_edge = pending_set;
+        uint8_t save_edge = pending_save;
+        pending_set = pending_save = 0u;
+        fsm_setting_run(set_edge, save_edge);
     }
 }

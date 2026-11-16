@@ -17,7 +17,7 @@ typedef uint8_t ButtonEvents;
 
 /* Call before starting TIM2; all keys begin in the released state. */
 void button_init(void);
-/* TIM2 ISR: one sample per callback, normally every 10 ms. No hold repeat. */
+/* Foreground Button task: one real sample every 10 ms. No hold repeat. */
 void button_reading(void);
 /* Consume one pending press, clearing only that key's event. Not a held level. */
 uint8_t is_button_pressed(uint8_t button_id);

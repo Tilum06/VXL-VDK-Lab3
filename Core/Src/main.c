@@ -29,6 +29,7 @@
 #include "button.h"
 #include "input_processing.h"
 #include "output_display.h"
+#include "scheduler.h"
 /* USER CODE END Includes */
 
 /* Private typedef -----------------------------------------------------------*/
@@ -100,8 +101,18 @@ int main(void)
   output_display_init();
   software_timer_init();
   input_processing_init();
-  timer2_init();
   traffic_light_init();
+  SCH_Init();
+  if (SCH_Add_Task(Task_Button, 1u, 1u) == SCH_INVALID_TASK_ID ||
+      SCH_Add_Task(Task_SoftwareTimer, 1u, 1u) == SCH_INVALID_TASK_ID ||
+      SCH_Add_Task(Task_ModeController, 1u, 1u) == SCH_INVALID_TASK_ID ||
+      SCH_Add_Task(Task_Automatic, 1u, 1u) == SCH_INVALID_TASK_ID ||
+      SCH_Add_Task(Task_Manual, 1u, 1u) == SCH_INVALID_TASK_ID ||
+      SCH_Add_Task(Task_Setting, 1u, 1u) == SCH_INVALID_TASK_ID)
+  {
+    Error_Handler();
+  }
+  timer2_init();
   /* USER CODE END 2 */
 
   /* Infinite loop */
@@ -111,7 +122,7 @@ int main(void)
     /* USER CODE END WHILE */
 
     /* USER CODE BEGIN 3 */
-    fsm_for_input_processing();
+    SCH_Dispatch_Tasks();
     output_display_scan();
   }
   /* USER CODE END 3 */

@@ -8,7 +8,7 @@ typedef struct {
     GPIO_PinState KeyReg3;
 } ButtonFilter;
 
-/* Filters are ISR-owned after init; only event flags are shared with main. */
+/* Filters and event flags are owned by foreground scheduler tasks. */
 static ButtonFilter keys[BUTTON_COUNT];
 static volatile ButtonEvents pending_events;
 static GPIO_TypeDef *const button_ports[BUTTON_COUNT] = {
