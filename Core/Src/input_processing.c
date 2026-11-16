@@ -6,7 +6,6 @@
 #include "software_timer.h"
 #include "output_display.h"
 
-volatile InputMode input_mode = INPUT_MODE_NORMAL;
 static InputMode active_mode;
 
 void input_processing_init(void)
