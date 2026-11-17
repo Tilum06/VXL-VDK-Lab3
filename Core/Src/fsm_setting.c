@@ -1,85 +1,57 @@
 #include "fsm_setting.h"
-#include "traffic_light.h"
-#include "output_display.h"
+#include "global.h"
 #include "software_timer.h"
+#include "traffic_light.h"
+#include "led_7seg.h"
 
-static InputMode setting_mode;
-static TrafficColor setting_color;
-static uint8_t edit_duration_s;
-static uint8_t save_rejected;
+static uint8_t edit_time, blink_on;
 
-static void update_display(void)
+void fsm_setting_enter(void)
 {
-    output_display_set_pairs((uint8_t)setting_mode,
-                             save_rejected ? 0u : edit_duration_s);
+    switch (input_mode) {
+    case INPUT_MODE_RED: edit_time = red_time; break;
+    case INPUT_MODE_YELLOW: edit_time = yellow_time; break;
+    case INPUT_MODE_GREEN: edit_time = green_time; break;
+    default: return;
+    }
+    blink_on = 1;
+    setTimer(TIMER_BLINK, 250); /* 250 ms ON + 250 ms OFF = 500 ms. */
+    setTimer(TIMER_ERROR, 0);
 }
 
-void fsm_setting_enter(InputMode mode)
+/* Shared by the three setting cases; never changes another colour's value. */
+static void edit_colour(uint8_t *saved, uint8_t valid)
 {
-    setting_mode = mode;
-    save_rejected = 0u;
-    setTimer(TIMER_SETTING_BLINK, TRAFFIC_LIGHT_BLINK_HALF_PERIOD_MS);
-    stopTimer(TIMER_SETTING_ERROR);
-    switch (setting_mode)
-    {
+    if (save_pressed) {
+        if (valid) *saved = edit_time;
+        else setTimer(TIMER_ERROR, 1000);
+    }
+}
+
+void fsm_setting_run(void)
+{
+    if (input_mode < INPUT_MODE_RED || input_mode > INPUT_MODE_GREEN) return;
+    if (set_pressed) edit_time = edit_time == 99 ? 1 : edit_time + 1;
+    if (isTimerExpired(TIMER_BLINK)) {
+        blink_on = !blink_on;
+        setTimer(TIMER_BLINK, 250);
+    }
+    switch (input_mode) {
     case INPUT_MODE_RED:
-        setting_color = TRAFFIC_COLOR_RED;
-        edit_duration_s = traffic_light_get_red_duration_s();
+        traffic_light_set(blink_on ? LIGHT_RED : LIGHT_OFF, blink_on ? LIGHT_RED : LIGHT_OFF);
+        edit_colour(&red_time, durations_valid(edit_time, yellow_time, green_time));
+        led_7seg_show(2, isTimerExpired(TIMER_ERROR) ? edit_time : 0);
         break;
     case INPUT_MODE_YELLOW:
-        setting_color = TRAFFIC_COLOR_YELLOW;
-        edit_duration_s = traffic_light_get_yellow_duration_s();
+        traffic_light_set(blink_on ? LIGHT_YELLOW : LIGHT_OFF, blink_on ? LIGHT_YELLOW : LIGHT_OFF);
+        edit_colour(&yellow_time, durations_valid(red_time, edit_time, green_time));
+        led_7seg_show(3, isTimerExpired(TIMER_ERROR) ? edit_time : 0);
         break;
     case INPUT_MODE_GREEN:
-        setting_color = TRAFFIC_COLOR_GREEN;
-        edit_duration_s = traffic_light_get_green_duration_s();
+        traffic_light_set(blink_on ? LIGHT_GREEN : LIGHT_OFF, blink_on ? LIGHT_GREEN : LIGHT_OFF);
+        edit_colour(&green_time, durations_valid(red_time, yellow_time, edit_time));
+        led_7seg_show(4, isTimerExpired(TIMER_ERROR) ? edit_time : 0);
         break;
-    default:
-        return;
+    default: break;
     }
-    traffic_light_set_blink_color(setting_color);
-    update_display();
-}
-
-void fsm_setting_run(uint8_t set_edge, uint8_t save_edge)
-{
-    /* Independent events: simultaneous SET+SAVE saves the incremented value. */
-    if (set_edge)
-    {
-        save_rejected = 0u;
-        stopTimer(TIMER_SETTING_ERROR);
-        edit_duration_s = (edit_duration_s >= INPUT_DURATION_MAX_S) ?
-                          INPUT_DURATION_MIN_S : edit_duration_s + 1u;
-    }
-    if (save_edge)
-    {
-        uint8_t accepted;
-        switch (setting_mode)
-        {
-        case INPUT_MODE_RED:
-            accepted = traffic_light_set_red_duration_s(edit_duration_s);
-            break;
-        case INPUT_MODE_YELLOW:
-            accepted = traffic_light_set_yellow_duration_s(edit_duration_s);
-            break;
-        case INPUT_MODE_GREEN:
-            accepted = traffic_light_set_green_duration_s(edit_duration_s);
-            break;
-        default:
-            return;
-        }
-        save_rejected = !accepted;
-        if (save_rejected) setTimer(TIMER_SETTING_ERROR, 1000u);
-        if (!save_rejected) stopTimer(TIMER_SETTING_ERROR);
-    }
-    uint8_t error_expired = save_rejected && isTimerExpired(TIMER_SETTING_ERROR);
-    if (error_expired)
-    {
-        save_rejected = 0u;
-        stopTimer(TIMER_SETTING_ERROR);
-    }
-    if (set_edge || save_edge || error_expired) update_display();
-
-    uint32_t half_periods = consumeTimerPeriods(TIMER_SETTING_BLINK);
-    if ((half_periods & 1u) != 0u) traffic_light_toggle_color(setting_color);
 }

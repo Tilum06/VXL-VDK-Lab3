@@ -22,14 +22,15 @@
 
 /* Private includes ----------------------------------------------------------*/
 /* USER CODE BEGIN Includes */
-#include "board_io.h"
-#include "timer.h"
-#include "software_timer.h"
-#include "traffic_light.h"
 #include "button.h"
-#include "input_processing.h"
-#include "output_display.h"
+#include "software_timer.h"
 #include "scheduler.h"
+#include "traffic_light.h"
+#include "led_7seg.h"
+#include "mode_controller.h"
+#include "fsm_automatic.h"
+#include "fsm_manual.h"
+#include "fsm_setting.h"
 /* USER CODE END Includes */
 
 /* Private typedef -----------------------------------------------------------*/
@@ -96,23 +97,27 @@ int main(void)
   MX_GPIO_Init();
   MX_TIM2_Init();
   /* USER CODE BEGIN 2 */
-  board_io_init();
   button_init();
-  output_display_init();
   software_timer_init();
-  input_processing_init();
-  traffic_light_init();
+  led_7seg_init();
+  fsm_automatic_start();
+  fsm_automatic_run();
   SCH_Init();
-  if (SCH_Add_Task(Task_Button, 1u, 1u) == SCH_INVALID_TASK_ID ||
-      SCH_Add_Task(Task_SoftwareTimer, 1u, 1u) == SCH_INVALID_TASK_ID ||
-      SCH_Add_Task(Task_ModeController, 1u, 1u) == SCH_INVALID_TASK_ID ||
-      SCH_Add_Task(Task_Automatic, 1u, 1u) == SCH_INVALID_TASK_ID ||
-      SCH_Add_Task(Task_Manual, 1u, 1u) == SCH_INVALID_TASK_ID ||
-      SCH_Add_Task(Task_Setting, 1u, 1u) == SCH_INVALID_TASK_ID)
-  {
-    Error_Handler();
-  }
-  timer2_init();
+  if (SCH_Add_Task(button_run, 1, 1) == SCH_INVALID_TASK_ID ||
+      SCH_Add_Task(software_timer_run, 1, 1) == SCH_INVALID_TASK_ID ||
+      SCH_Add_Task(mode_controller_run, 1, 1) == SCH_INVALID_TASK_ID ||
+      SCH_Add_Task(fsm_automatic_run, 1, 1) == SCH_INVALID_TASK_ID ||
+      SCH_Add_Task(fsm_manual_run, 1, 1) == SCH_INVALID_TASK_ID ||
+      SCH_Add_Task(fsm_setting_run, 1, 1) == SCH_INVALID_TASK_ID)
+      Error_Handler();
+
+  /* HSI = APB1 = TIM2 clock = 8 MHz: 8e6 / (799+1) / (99+1)
+   * = 100 Hz. Clear init's update flag before starting the first full tick.
+   */
+  __HAL_TIM_SET_COUNTER(&htim2, 0);
+  __HAL_TIM_CLEAR_FLAG(&htim2, TIM_FLAG_UPDATE);
+  HAL_NVIC_ClearPendingIRQ(TIM2_IRQn);
+  if (HAL_TIM_Base_Start_IT(&htim2) != HAL_OK) Error_Handler();
   /* USER CODE END 2 */
 
   /* Infinite loop */
@@ -123,7 +128,7 @@ int main(void)
 
     /* USER CODE BEGIN 3 */
     SCH_Dispatch_Tasks();
-    output_display_scan();
+    led_7seg_scan();
   }
   /* USER CODE END 3 */
 }
@@ -223,12 +228,12 @@ static void MX_GPIO_Init(void)
 
   /*Configure GPIO pin Output Level */
   HAL_GPIO_WritePin(GPIOA, RED_LED_Pin|YELLOW_LED_Pin|GREEN_LED_Pin|RED_LED2_Pin
-                          |YELLOW_LED2_Pin|GREEN_LED2_Pin, LED_OFF);
+                          |YELLOW_LED2_Pin|GREEN_LED2_Pin, GPIO_PIN_SET);
 
   /*Configure GPIO pin Output Level */
   HAL_GPIO_WritePin(GPIOB, SEG_A_Pin|SEG_B_Pin|SEG_C_Pin|EN3_Pin
                           |SEG_D_Pin|SEG_E_Pin|SEG_F_Pin|SEG_G_Pin
-                          |EN0_Pin|EN1_Pin|EN2_Pin, GPIO_PIN_RESET);
+                          |EN0_Pin|EN1_Pin|EN2_Pin, GPIO_PIN_SET);
 
   /*Configure GPIO pins : MODE_Pin SET_Pin SAVE_Pin */
   GPIO_InitStruct.Pin = MODE_Pin|SET_Pin|SAVE_Pin;
@@ -259,6 +264,11 @@ static void MX_GPIO_Init(void)
 }
 
 /* USER CODE BEGIN 4 */
+void HAL_TIM_PeriodElapsedCallback(TIM_HandleTypeDef *htim)
+{
+  if (htim->Instance == TIM2) SCH_Update();
+}
+
 
 /* USER CODE END 4 */
 
