@@ -19,7 +19,6 @@ typedef enum {
 
 void fsm_manual_enter(TrafficHandoff handoff);
 TrafficHandoff fsm_manual_handoff(void);
-uint8_t fsm_manual_timed_out(void);
 void fsm_manual_run(uint8_t set_edge);
 
 #endif

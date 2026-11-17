@@ -92,11 +92,6 @@ TrafficHandoff fsm_manual_handoff(void)
     return handoff;
 }
 
-uint8_t fsm_manual_timed_out(void)
-{
-    return isTimerExpired(TIMER_MANUAL_TIMEOUT);
-}
-
 void fsm_manual_run(uint8_t set_edge)
 {
     ManualState previous_state = manual_state;

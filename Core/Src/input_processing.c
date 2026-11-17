@@ -24,6 +24,7 @@ void fsm_for_input_processing(void)
     uint8_t mode_edge = (events & BUTTON_EVENT_MODE) != 0u;
     uint8_t set_edge = (events & BUTTON_EVENT_SET) != 0u;
     uint8_t save_edge = (events & BUTTON_EVENT_SAVE) != 0u;
+    uint8_t restart_automatic = 0u;
 
     /* MODE wins. At the exact timeout boundary, timeout wins over SET.
      * Guard independent ifs to allow at most one mode transition per call.
@@ -44,8 +45,8 @@ void fsm_for_input_processing(void)
         if (mode_edge) input_mode = INPUT_MODE_NORMAL;
         break;
     case INPUT_MODE_MANUAL:
-        if (mode_edge) input_mode = INPUT_MODE_NORMAL;
-        if (!mode_edge && fsm_manual_timed_out()) input_mode = INPUT_MODE_NORMAL;
+        if (mode_edge || isTimerExpired(TIMER_MANUAL_TIMEOUT))
+            input_mode = INPUT_MODE_NORMAL;
         break;
     default:
         input_mode = INPUT_MODE_NORMAL;
@@ -68,7 +69,7 @@ void fsm_for_input_processing(void)
         case INPUT_MODE_NORMAL:
             if (previous_mode == INPUT_MODE_MANUAL)
                 fsm_automatic_resume(handoff);
-            if (previous_mode != INPUT_MODE_MANUAL) fsm_automatic_enter();
+            if (previous_mode != INPUT_MODE_MANUAL) restart_automatic = 1u;
             break;
         case INPUT_MODE_RED:
         case INPUT_MODE_YELLOW:
@@ -88,7 +89,7 @@ void fsm_for_input_processing(void)
     switch (active_mode)
     {
     case INPUT_MODE_NORMAL:
-        fsm_automatic_run();
+        fsm_automatic_run(restart_automatic);
         break;
     case INPUT_MODE_RED:
     case INPUT_MODE_YELLOW:

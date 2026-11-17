@@ -21,9 +21,10 @@ typedef struct {
     uint32_t all_red_elapsed_ms;
 } TrafficHandoff;
 
-void fsm_automatic_enter(void);
 TrafficHandoff fsm_automatic_handoff(void);
+/* Schedule the matching phase; complete it with run(0) in the same iteration. */
 void fsm_automatic_resume(TrafficHandoff handoff);
-void fsm_automatic_run(void);
+/* restart=1 starts fresh at ROAD1_GREEN; restart=0 runs/resumes the current phase. */
+void fsm_automatic_run(uint8_t restart);
 
 #endif
