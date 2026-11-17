@@ -9,9 +9,9 @@ static uint8_t edit_time, blink_on;
 void fsm_setting_enter(void)
 {
     switch (input_mode) {
-    case INPUT_MODE_RED: edit_time = red_time; break;
-    case INPUT_MODE_YELLOW: edit_time = yellow_time; break;
-    case INPUT_MODE_GREEN: edit_time = green_time; break;
+    case MODE_SET_RED: edit_time = red_time; break;
+    case MODE_SET_YELLOW: edit_time = yellow_time; break;
+    case MODE_SET_GREEN: edit_time = green_time; break;
     default: return;
     }
     blink_on = 1;
@@ -19,39 +19,70 @@ void fsm_setting_enter(void)
     setTimer(TIMER_ERROR, 0);
 }
 
-/* Shared by the three setting cases; never changes another colour's value. */
-static void edit_colour(uint8_t *saved, uint8_t valid)
-{
-    if (save_pressed) {
-        if (valid) *saved = edit_time;
-        else setTimer(TIMER_ERROR, 1000);
-    }
-}
-
 void fsm_setting_run(void)
 {
-    if (input_mode < INPUT_MODE_RED || input_mode > INPUT_MODE_GREEN) return;
-    if (set_pressed) edit_time = edit_time == 99 ? 1 : edit_time + 1;
-    if (isTimerExpired(TIMER_BLINK)) {
-        blink_on = !blink_on;
-        setTimer(TIMER_BLINK, 250);
-    }
     switch (input_mode) {
-    case INPUT_MODE_RED:
-        traffic_light_set(blink_on ? LIGHT_RED : LIGHT_OFF, blink_on ? LIGHT_RED : LIGHT_OFF);
-        edit_colour(&red_time, durations_valid(edit_time, yellow_time, green_time));
+    case MODE_SET_RED:
+        if (isTimerExpired(TIMER_BLINK)) {
+            blink_on = !blink_on;
+            setTimer(TIMER_BLINK, 250);
+        }
+        traffic_light_set(blink_on ? LIGHT_RED : LIGHT_OFF,
+                          blink_on ? LIGHT_RED : LIGHT_OFF);
+
+        if (set_pressed) {
+            edit_time = edit_time == 99 ? 1 : edit_time + 1;
+        }
+        if (save_pressed && durations_valid(edit_time, yellow_time, green_time)) {
+            red_time = edit_time;
+        }
+        if (save_pressed && !durations_valid(edit_time, yellow_time, green_time)) {
+            setTimer(TIMER_ERROR, 1000);
+        }
         led_7seg_show(2, isTimerExpired(TIMER_ERROR) ? edit_time : 0);
         break;
-    case INPUT_MODE_YELLOW:
-        traffic_light_set(blink_on ? LIGHT_YELLOW : LIGHT_OFF, blink_on ? LIGHT_YELLOW : LIGHT_OFF);
-        edit_colour(&yellow_time, durations_valid(red_time, edit_time, green_time));
+
+    case MODE_SET_YELLOW:
+        if (isTimerExpired(TIMER_BLINK)) {
+            blink_on = !blink_on;
+            setTimer(TIMER_BLINK, 250);
+        }
+        traffic_light_set(blink_on ? LIGHT_YELLOW : LIGHT_OFF,
+                          blink_on ? LIGHT_YELLOW : LIGHT_OFF);
+
+        if (set_pressed) {
+            edit_time = edit_time == 99 ? 1 : edit_time + 1;
+        }
+        if (save_pressed && durations_valid(red_time, edit_time, green_time)) {
+            yellow_time = edit_time;
+        }
+        if (save_pressed && !durations_valid(red_time, edit_time, green_time)) {
+            setTimer(TIMER_ERROR, 1000);
+        }
         led_7seg_show(3, isTimerExpired(TIMER_ERROR) ? edit_time : 0);
         break;
-    case INPUT_MODE_GREEN:
-        traffic_light_set(blink_on ? LIGHT_GREEN : LIGHT_OFF, blink_on ? LIGHT_GREEN : LIGHT_OFF);
-        edit_colour(&green_time, durations_valid(red_time, yellow_time, edit_time));
+
+    case MODE_SET_GREEN:
+        if (isTimerExpired(TIMER_BLINK)) {
+            blink_on = !blink_on;
+            setTimer(TIMER_BLINK, 250);
+        }
+        traffic_light_set(blink_on ? LIGHT_GREEN : LIGHT_OFF,
+                          blink_on ? LIGHT_GREEN : LIGHT_OFF);
+
+        if (set_pressed) {
+            edit_time = edit_time == 99 ? 1 : edit_time + 1;
+        }
+        if (save_pressed && durations_valid(red_time, yellow_time, edit_time)) {
+            green_time = edit_time;
+        }
+        if (save_pressed && !durations_valid(red_time, yellow_time, edit_time)) {
+            setTimer(TIMER_ERROR, 1000);
+        }
         led_7seg_show(4, isTimerExpired(TIMER_ERROR) ? edit_time : 0);
         break;
-    default: break;
+
+    default:
+        break;
     }
 }

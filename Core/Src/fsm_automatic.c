@@ -40,7 +40,7 @@ void fsm_automatic_resume(void)
 
 void fsm_automatic_run(void)
 {
-    if (input_mode != INPUT_MODE_NORMAL) return;
+    if (input_mode != MODE_AUTO) return;
     /* Render the destination in this same invocation, so transitions never
      * add an extra 10 ms to a phase. Zero clearance is bypassed explicitly.
      */

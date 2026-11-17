@@ -39,7 +39,7 @@ void HAL_GPIO_WritePin(GPIO_TypeDef *port, uint16_t pins, GPIO_PinState level)
                (level == GPIO_PIN_SET && (pins & ENABLES) == ENABLES)); /* Atomic blank is safe. */
     if (level == GPIO_PIN_SET) port->odr |= pins;
     else port->odr &= (uint16_t)~pins;
-    if (port == GPIOA && (input_mode == INPUT_MODE_NORMAL || input_mode == INPUT_MODE_MANUAL))
+    if (port == GPIOA && (input_mode == MODE_AUTO || input_mode == MODE_MANUAL))
         assert((porta.odr & GREEN_LED_Pin) || (porta.odr & GREEN_LED2_Pin));
     ++writes;
 }
@@ -73,7 +73,7 @@ static void blank(void)
 }
 static void init_app(unsigned red)
 {
-    input_mode = INPUT_MODE_NORMAL;
+    input_mode = MODE_AUTO;
     set_pressed = save_pressed = 0;
     red_time = red; yellow_time = 2; green_time = 3;
     porta.odr = portb.odr = porta.idr = 0xffff;
@@ -208,12 +208,12 @@ static void test_buttons(void)
     porta.idr &= (uint16_t)~MODE_Pin; ticks(1);
     porta.idr |= MODE_Pin; ticks(1);
     porta.idr &= (uint16_t)~MODE_Pin; ticks(2);
-    assert(input_mode==INPUT_MODE_NORMAL);
-    ticks(1); assert(input_mode==INPUT_MODE_RED);
-    ticks(100); assert(input_mode==INPUT_MODE_RED); /* Held: one event only. */
-    release(MODE_Pin); click(MODE_Pin); assert(input_mode==INPUT_MODE_YELLOW);
+    assert(input_mode==MODE_AUTO);
+    ticks(1); assert(input_mode==MODE_SET_RED);
+    ticks(100); assert(input_mode==MODE_SET_RED); /* Held: one event only. */
+    release(MODE_Pin); click(MODE_Pin); assert(input_mode==MODE_SET_YELLOW);
     init_app(5); press(MODE_Pin|SET_Pin|SAVE_Pin);
-    assert(input_mode==INPUT_MODE_RED && red_time==5); display(2,5);
+    assert(input_mode==MODE_SET_RED && red_time==5); display(2,5);
     release(MODE_Pin|SET_Pin|SAVE_Pin);
     assert(button_take_events()==0);
     puts("buttons: 3 stable samples, bounce, hold, simultaneous MODE priority, one consumer PASS");
@@ -221,18 +221,18 @@ static void test_buttons(void)
 static void test_setting(void)
 {
     init_app(5); press(MODE_Pin);
-    assert(input_mode==INPUT_MODE_RED); display(2,5); roads(RED_LED_Pin|RED_LED2_Pin);
+    assert(input_mode==MODE_SET_RED); display(2,5); roads(RED_LED_Pin|RED_LED2_Pin);
     ticks(24); roads(RED_LED_Pin|RED_LED2_Pin);
     ticks(1); roads(0); ticks(25); roads(RED_LED_Pin|RED_LED2_Pin);
     release(MODE_Pin); click(SET_Pin); click(SAVE_Pin);
     assert(red_time==6); display(2,6);
-    click(MODE_Pin); assert(input_mode==INPUT_MODE_YELLOW); display(3,2);
+    click(MODE_Pin); assert(input_mode==MODE_SET_YELLOW); display(3,2);
     click(SET_Pin); click(SAVE_Pin); assert(yellow_time==3);
-    click(MODE_Pin); assert(input_mode==INPUT_MODE_GREEN); display(4,3);
+    click(MODE_Pin); assert(input_mode==MODE_SET_GREEN); display(4,3);
     click(SET_Pin); press(SAVE_Pin);
     assert(green_time==3); display(4,0);
     ticks(99); display(4,0); ticks(1); display(4,4);
-    release(SAVE_Pin); click(MODE_Pin); assert(input_mode==INPUT_MODE_NORMAL);
+    release(SAVE_Pin); click(MODE_Pin); assert(input_mode==MODE_AUTO);
     assert(traffic_phase==ROAD1_GREEN);
     init_app(99); click(MODE_Pin); click(SET_Pin); display(2,1);
     press(SAVE_Pin); assert(red_time==99); display(2,0);
@@ -253,9 +253,9 @@ static void test_manual(void)
         MAN_ROAD2_GREEN,MAN_ROAD2_YELLOW,MAN_ALL_RED_TO_ROAD1};
     for(unsigned i=0;i<6;++i) {
         init_app(7); ticks(offsets[i]); uint16_t before=porta.odr & TRAFFIC;
-        press(SAVE_Pin); assert(input_mode==INPUT_MODE_MANUAL && manual_state==states[i]);
+        press(SAVE_Pin); assert(input_mode==MODE_MANUAL && manual_state==states[i]);
         assert((porta.odr & TRAFFIC)==before); blank(); release(SAVE_Pin);
-        press(MODE_Pin); assert(input_mode==INPUT_MODE_NORMAL);
+        press(MODE_Pin); assert(input_mode==MODE_AUTO);
         if(i==0 || i==3) assert(timerRemaining(TIMER_AUTO_PHASE)==3000);
         if(i==1 || i==4) assert(timerRemaining(TIMER_AUTO_PHASE)==2000);
         if(i==2 || i==5) { roads(RED_LED_Pin|RED_LED2_Pin); ticks(100); }
@@ -272,17 +272,17 @@ static void test_manual(void)
     click(SET_Pin); assert(manual_state==MAN_ROAD2_GREEN); blank();
     click(SET_Pin); assert(manual_state==MAN_ROAD2_YELLOW); blank();
     click(SET_Pin); assert(manual_state==MAN_ROAD1_GREEN); blank();
-    ticks(996); assert(input_mode==INPUT_MODE_MANUAL);
-    ticks(1); assert(input_mode==INPUT_MODE_NORMAL);
+    ticks(996); assert(input_mode==MODE_MANUAL);
+    ticks(1); assert(input_mode==MODE_AUTO);
     assert(traffic_phase==ROAD1_GREEN && timerRemaining(TIMER_AUTO_PHASE)==3000);
     init_app(7); ticks(500); click(SAVE_Pin); click(SET_Pin);
     assert(manual_state==MAN_ALL_RED_TO_ROAD2); roads(RED_LED_Pin|RED_LED2_Pin);
     ticks(100); click(SET_Pin); assert(manual_state==MAN_ROAD2_GREEN);
     press(MODE_Pin); assert(traffic_phase==ROAD2_GREEN); roads(RED_LED_Pin|GREEN_LED2_Pin);
     init_app(7); ticks(1100); click(SAVE_Pin); ticks(1000);
-    assert(input_mode==INPUT_MODE_NORMAL && traffic_phase==ROAD1_GREEN);
+    assert(input_mode==MODE_AUTO && traffic_phase==ROAD1_GREEN);
     init_app(5); press(SAVE_Pin); release(SAVE_Pin); ticks(997);
-    assert(input_mode==INPUT_MODE_NORMAL); /* SAVE entry did not get reused. */
+    assert(input_mode==MODE_AUTO); /* SAVE entry did not get reused. */
     puts("manual: preserve all phases, SET cycle, blank4digits, 10 s timeout, MODE, all-red guard PASS");
 }
 static void test_scan(void)

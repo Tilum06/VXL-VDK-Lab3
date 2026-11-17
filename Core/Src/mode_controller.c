@@ -15,39 +15,39 @@ void mode_controller_run(void)
      * mode and must not be reused as commands by the destination FSM.
      */
     switch (input_mode) {
-    case INPUT_MODE_NORMAL:
+    case MODE_AUTO:
         if (events & BUTTON_MODE) {
-            input_mode = INPUT_MODE_RED;
+            input_mode = MODE_SET_RED;
             fsm_setting_enter();
         } else if (save_pressed) {
-            input_mode = INPUT_MODE_MANUAL;
+            input_mode = MODE_MANUAL;
             fsm_manual_enter();
         } else return;
         break;
-    case INPUT_MODE_RED:
+    case MODE_SET_RED:
         if (!(events & BUTTON_MODE)) return;
-        input_mode = INPUT_MODE_YELLOW;
+        input_mode = MODE_SET_YELLOW;
         fsm_setting_enter();
         break;
-    case INPUT_MODE_YELLOW:
+    case MODE_SET_YELLOW:
         if (!(events & BUTTON_MODE)) return;
-        input_mode = INPUT_MODE_GREEN;
+        input_mode = MODE_SET_GREEN;
         fsm_setting_enter();
         break;
-    case INPUT_MODE_GREEN:
+    case MODE_SET_GREEN:
         if (!(events & BUTTON_MODE)) return;
-        input_mode = INPUT_MODE_NORMAL;
+        input_mode = MODE_AUTO;
         fsm_automatic_start();
         break;
-    case INPUT_MODE_MANUAL:
+    case MODE_MANUAL:
         if (events & BUTTON_MODE) {
-            input_mode = INPUT_MODE_NORMAL;
+            input_mode = MODE_AUTO;
             fsm_automatic_resume();
         } else if (set_pressed || save_pressed) {
             setTimer(TIMER_MANUAL, 10000);
             return;
         } else if (isTimerExpired(TIMER_MANUAL)) {
-            input_mode = INPUT_MODE_NORMAL;
+            input_mode = MODE_AUTO;
             fsm_automatic_resume();
         } else return;
         break;

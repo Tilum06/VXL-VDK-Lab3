@@ -3,8 +3,11 @@
 #include <stdint.h>
 
 typedef enum {
-    INPUT_MODE_NORMAL = 1, INPUT_MODE_RED, INPUT_MODE_YELLOW,
-    INPUT_MODE_GREEN, INPUT_MODE_MANUAL
+    MODE_AUTO = 1,
+    MODE_SET_RED,
+    MODE_SET_YELLOW,
+    MODE_SET_GREEN,
+    MODE_MANUAL
 } InputMode;
 
 typedef enum {

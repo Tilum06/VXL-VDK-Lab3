@@ -1,5 +1,5 @@
 #include "global.h"
-InputMode input_mode = INPUT_MODE_NORMAL;
+InputMode input_mode = MODE_AUTO;
 TrafficPhase traffic_phase = ROAD1_GREEN;
 ManualState manual_state = MAN_ROAD1_GREEN;
 uint8_t red_time = 5, yellow_time = 2, green_time = 3;

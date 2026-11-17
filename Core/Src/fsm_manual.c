@@ -20,7 +20,7 @@ void fsm_manual_enter(void)
 
 void fsm_manual_run(void)
 {
-    if (input_mode != INPUT_MODE_MANUAL) return;
+    if (input_mode != MODE_MANUAL) return;
     uint8_t step = set_pressed;
     led_7seg_blank();
     if (set_pressed || save_pressed) setTimer(TIMER_MANUAL, 10000);
